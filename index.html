@@ -836,5 +836,20 @@
             });
         });
     </script>
+	<!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./offline_service_worker.js')
+                    .then(reg => console.log('App ready for offline/home screen install!'))
+                    .catch(err => console.log('Service worker failed', err));
+            });
+        }
+    </script>
+</body>
+</html>
+	
+	
+	
 </body>
 </html>
