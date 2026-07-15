@@ -38,7 +38,6 @@
             margin: 0;
             padding: 0;
             user-select: none;
-            /* Prevent bounce scrolling on iOS */
             overscroll-behavior-y: none; 
         }
 
@@ -96,7 +95,6 @@
 
         input { user-select: auto; }
 
-        /* Slide mechanics */
         .slide {
             position: absolute;
             top: 0;
@@ -117,6 +115,16 @@
             display: block;
             opacity: 1;
             z-index: 10;
+        }
+
+        /* Nav Zones */
+        .nav-zone {
+            position: absolute;
+            top: 0;
+            height: calc(100% - 3.5rem); /* Avoid control bar */
+            z-index: 20;
+            cursor: pointer;
+            touch-action: none;
         }
 
         @keyframes fadeRight {
@@ -141,7 +149,6 @@
             animation: zoomFade 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; 
         }
 
-        /* Component Styling */
         .step-badge {
             background-color: var(--trimble-blue);
             color: white;
@@ -189,7 +196,13 @@
     </div>
 
     <main id="presentation-container" class="relative w-screen h-screen bg-[#ffffff]">
+        
+        <!-- Canvas Layer -->
         <canvas id="drawing-canvas" class="absolute top-0 left-0 w-full h-full pointer-events-none" style="z-index: 25;"></canvas>
+        
+        <!-- Safe Transparent Navigation Zones (Replaces Global Click Listener) -->
+        <div id="nav-zone-left" class="nav-zone left-0 w-[10%]" title="Previous Slide"></div>
+        <div id="nav-zone-right" class="nav-zone right-0 w-[90%]" title="Next Slide"></div>
         
         <img id="global-small-logo" src="GlobeR-Logo-Boxed-Blue10-RGB.png" onerror="this.onerror=null; this.src='https://placehold.co/48x48/0063a3/ffffff?text=Icon';" alt="Trimble Icon" class="absolute top-4 right-8 h-10 w-10 object-contain z-30 pointer-events-none hidden shadow-sm">
 
@@ -221,7 +234,6 @@
             </div>
         </section>
 
-        <!-- Fixed nested tag issue from original code to provide a solid Support Overview structure -->
         <section class="slide px-4 md:px-8 lg:px-20 pt-6 md:pt-10 flex flex-col pb-24" id="slide-1">
             <div class="w-full mb-4 md:mb-6 flex justify-between items-end">
                 <div>
@@ -567,6 +579,8 @@
             const progressBar = document.getElementById('progress-bar');
             
             const fullscreenBtn = document.getElementById('fullscreen-btn');
+            const navZoneLeft = document.getElementById('nav-zone-left');
+            const navZoneRight = document.getElementById('nav-zone-right');
 
             /* Canvas Annotation System */
             const canvas = document.getElementById('drawing-canvas');
@@ -684,36 +698,21 @@
             }
             updateUI(); 
 
-            // Standard Navigation Triggers
+            // Event Listeners for explicit Nav Zones
+            navZoneLeft.addEventListener('click', handlePrev);
+            navZoneRight.addEventListener('click', handleNext);
+            
+            // Event Listeners for explicitly UI controls
             prevBtn.addEventListener('click', handlePrev);
             nextBtn.addEventListener('click', handleNext);
-            
-            // Global click handler for slide advancement (Replaces overlay divs)
-            document.getElementById('presentation-container').addEventListener('click', (e) => {
-                // Do not advance if we are drawing or adding text
-                if (currentTool !== null) return;
-                
-                // Do not advance if clicking the bottom control bar or any of its children
-                if (e.target.closest('.absolute.bottom-0')) return;
-
-                // Determine if click was in the left 10% (Go back) or anywhere else (Go next)
-                const clickX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
-                const screenWidth = window.innerWidth;
-                
-                if (clickX > 0 && clickX < screenWidth * 0.1) {
-                    handlePrev();
-                } else if (clickX >= screenWidth * 0.1) {
-                    handleNext();
-                }
-            });
-            
             slideDropdown.addEventListener('change', (e) => showSlide(e.target.value));
 
+            // Mobile Swipe Support
             let touchStartX = 0;
             let touchStartY = 0;
             
             document.addEventListener('touchstart', (e) => {
-                if (currentTool !== null) return; // Don't track swipe if drawing
+                if (currentTool !== null) return;
                 touchStartX = e.changedTouches[0].screenX;
                 touchStartY = e.changedTouches[0].screenY;
             }, { passive: true });
@@ -727,20 +726,20 @@
                 let diffX = touchStartX - touchEndX;
                 let diffY = touchStartY - touchEndY;
                 
-                // If it was primarily a horizontal swipe
+                // Horizontal Swipe priority
                 if (Math.abs(diffX) > Math.abs(diffY)) {
-                    // Requires a minimum distance of 50px to register as a swipe
+                    // Requires 50px drag distance to avoid accidental tap triggers
                     if (Math.abs(diffX) > 50) {
                         if (diffX > 0) {
-                            handleNext(); // Swiped left => Go Next
+                            handleNext();
                         } else {
-                            handlePrev(); // Swiped right => Go Back
+                            handlePrev();
                         }
                     }
                 }
             }, { passive: true });
 
-            // Keyboard navigation
+            // Keyboard support
             document.addEventListener('keydown', (e) => {
                 if(e.target.tagName.toLowerCase() === 'input') return;
                 if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
@@ -765,9 +764,17 @@
                 markerIndicator.classList.add('hidden');
                 textIndicator.classList.add('hidden');
                 document.body.style.cursor = 'default';
+                
+                // Re-enable click zones by default
+                navZoneLeft.classList.remove('pointer-events-none');
+                navZoneRight.classList.remove('pointer-events-none');
 
                 if (tool !== null) {
                     canvas.classList.remove('pointer-events-none');
+                    // Disable click zones so we can draw anywhere safely
+                    navZoneLeft.classList.add('pointer-events-none');
+                    navZoneRight.classList.add('pointer-events-none');
+                    
                     if (tool === 'marker') {
                         markerBtn.classList.add('bg-gray-100', 'border-gray-300');
                         markerIndicator.classList.remove('hidden');
