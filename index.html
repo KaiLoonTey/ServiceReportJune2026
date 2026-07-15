@@ -109,7 +109,6 @@
             box-sizing: border-box;
             background-color: var(--brand-light);
             padding-bottom: 4rem;
-            /* FIX: Allow internal scrolling on small screens so nav bar stays fixed */
             overflow-y: auto;
             overflow-x: hidden;
         }
@@ -120,7 +119,6 @@
             z-index: 10;
         }
 
-        /* Animations */
         @keyframes fadeRight {
             from { opacity: 0; transform: translateX(-40px); }
             to { opacity: 1; transform: translateX(0); }
@@ -143,11 +141,16 @@
             animation: zoomFade 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; 
         }
 
-        /* Navigation */
-        .nav-area { position: absolute; top: 0; bottom: 4rem; width: 8%; z-index: 20; cursor: pointer; }
-        .nav-area-left { left: 0; }
-        .nav-area-right { right: 0; }
+        /* Navigation Click Areas Setup */
+        .nav-area { position: absolute; top: 0; bottom: 4rem; z-index: 20; cursor: pointer; }
+        
+        /* Left 10% is for moving back */
+        .nav-area-left { left: 0; width: 10%; } 
+        
+        /* Remaining 90% is for clicking anywhere to move forward */
+        .nav-area-right { left: 10%; right: 0; width: 90%; }
 
+        /* Component Styling */
         .step-badge {
             background-color: var(--trimble-blue);
             color: white;
@@ -172,7 +175,6 @@
             justify-content: space-between;
         }
         
-        /* Bar chart animations */
         @keyframes growUp { from { height: 0; opacity: 0; } to { opacity: 1; } }
         @keyframes growRight { from { width: 0; opacity: 0; } to { opacity: 1; } }
         
@@ -183,14 +185,12 @@
 </head>
 <body class="antialiased selection:bg-[#0063a3] selection:text-white">
 
-    <!-- PORTRAIT MODE WARNING OVERLAY -->
     <div id="portrait-warning">
         <svg class="w-20 h-20 mb-6 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 10.5h16M4 10.5a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2v-6a2 2 0 00-2-2M4 10.5v-4a2 2 0 012-2h12a2 2 0 012 2v4M8 21v-3m8 3v-3M9 14h6"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6.5a2 2 0 012-2h.01a2 2 0 012 2v.01a2 2 0 01-2 2H12a2 2 0 01-2-2V6.5z"></path></svg>
         <h2 class="text-3xl font-extrabold mb-4">Please Rotate Your Device</h2>
         <p class="text-lg text-gray-300 max-w-md mx-auto">This quarterly service dashboard is optimized for landscape viewing. Turn your phone sideways to continue.</p>
     </div>
 
-    <!-- IOS INSTALL HELPER POPUP -->
     <div id="ios-install-prompt">
         <p class="font-bold mb-1">Install Trimble Dashboard</p>
         <p class="text-gray-500">Tap <span class="inline-block border border-gray-300 rounded px-1 pb-1 mx-1"><svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg></span> and select <strong>"Add to Home Screen"</strong> for full-screen mode.</p>
@@ -200,13 +200,13 @@
     <main id="presentation-container" class="relative w-screen h-screen bg-[#ffffff]">
         <canvas id="drawing-canvas" class="absolute top-0 left-0 w-full h-full pointer-events-none" style="z-index: 25;"></canvas>
         
-        <!-- GLOBAL SMALL LOGO -->
         <img id="global-small-logo" src="GlobeR-Logo-Boxed-Blue10-RGB.png" onerror="this.onerror=null; this.src='https://placehold.co/48x48/0063a3/ffffff?text=Icon';" alt="Trimble Icon" class="absolute top-4 right-8 h-10 w-10 object-contain z-30 pointer-events-none hidden shadow-sm">
 
+        <!-- Clickable Areas that sit above the slides but below the drawing tools -->
         <div class="nav-area nav-area-left" id="nav-left" title="Previous Slide"></div>
         <div class="nav-area nav-area-right" id="nav-right" title="Next Slide"></div>
 
-        <!-- NEW TITLE SLIDE -->
+        <!-- TITLE SLIDE -->
         <section class="slide active" id="slide-0">
             <div class="absolute inset-0 z-0 bg-black">
                 <img src="coverpage.jpg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1586528116311-ad8ed7c861e0?q=80&w=2070&auto=format&fit=crop';" alt="Cover Image" class="w-full h-full object-cover opacity-80">
@@ -234,39 +234,12 @@
             </div>
         </section>
 
-        <section class="slide px-4 md:px-8 lg:px-20 pt-6 md:pt-10" id="slide-1">
-            <div class="w-full mb-4 md:mb-8 border-b-2 border-gray-200 pb-2 md:pb-4 flex justify-between items-end">
-                <div>
-                    <div class="step-badge animate-title">1. Support Overview</div>
-                    <h2 class="text-xl md:text-2xl lg:text-4xl font-extrabold text-[#252a2e] animate-title tracking-tight">Trimble SEA Service Dashboard</h2>
-                </div>
-
-                    <div class="animate-title mt-16 max-w-3xl">
-                        <h1 class="text-5xl lg:text-7xl font-extrabold text-white mb-8 leading-tight tracking-tight">Trimble SEA<br>Service Dashboard</h1>
-                        <h2 class="text-2xl lg:text-3xl text-gray-200 font-normal mb-16">June 2026 Reporting Period</h2>
-        <section class="slide px-4 md:px-8 lg:px-20 pt-6 md:pt-10" id="slide-2">
-            <div class="w-full mb-4 md:mb-6">
-                <div class="step-badge animate-title">2. Support Trends</div>
-                <h2 class="text-xl md:text-2xl lg:text-3xl font-extrabold text-[#252a2e] animate-title">Performance & Volume Analysis</h2>
-            </div>
-        <section class="slide px-4 md:px-8 lg:px-20 pt-6 md:pt-10" id="slide-3">
-            <div class="w-full mb-4 md:mb-6">
-                <div class="step-badge animate-title">3. Onboarding</div>
-                <h2 class="text-xl md:text-2xl lg:text-3xl font-extrabold text-[#252a2e] animate-title">Customer Adoption Metrics</h2>
-            </div>
-        <section class="slide px-4 md:px-8 lg:px-20 pt-6 md:pt-10" id="slide-4">
-            <div class="w-full mb-2 md:mb-4">
-                <div class="step-badge animate-title">4. Training & Clinics</div>
-                <h2 class="text-xl md:text-2xl lg:text-3xl font-extrabold text-[#252a2e] animate-title">Training Delivery</h2>
-            </div>
-            </div>
-        </section>
-
-        <section class="slide px-4 md:px-8 lg:px-20 pt-6 md:pt-10 flex flex-col pb-24" id="slide-5">
+        <!-- Fixed nested tag issue from original code to provide a solid Support Overview structure -->
+        <section class="slide px-4 md:px-8 lg:px-20 pt-6 md:pt-10 flex flex-col pb-24" id="slide-1">
             <div class="w-full mb-4 md:mb-6 flex justify-between items-end">
                 <div>
-                    <div class="step-badge animate-title">5. Team Workload</div>
-                    <h2 class="text-xl md:text-2xl lg:text-3xl font-extrabold text-[#252a2e] animate-title">Capacity & Output</h2>
+                    <div class="step-badge animate-title">1. Support Overview</div>
+                    <h2 class="text-xl md:text-2xl lg:text-3xl font-extrabold text-[#252a2e] animate-title">High-Level Performance</h2>
                 </div>
                 <div class="text-right animate-title hidden sm:block">
                     <p class="text-xl font-bold text-[#0063a3]">June 2026</p>
@@ -502,7 +475,6 @@
                 </div>
             </div>
 
-            <!-- Removed 'reveal-step' so it loads instantly on the final slide -->
             <div class="kpi-card w-full flex-grow animate-fade-up-immediate mb-4 overflow-hidden">
                 <h2 class="text-lg font-bold text-[#252a2e] mb-4 border-b pb-2">Support Cases by Team Member</h2>
                 
@@ -594,7 +566,7 @@
         if (isIos() && !isInStandaloneMode()) {
             setTimeout(() => {
                 document.getElementById('ios-install-prompt').style.display = 'block';
-            }, 3000); // Show popup after 3 seconds
+            }, 3000); 
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -681,7 +653,6 @@
                     else smallLogo.classList.remove('hidden');
                 }
 
-                // Hide all reveal steps so they wait for a click (except on slide 5)
                 const steps = slides[currentSlideIndex].querySelectorAll('.reveal-step');
                 steps.forEach(step => step.classList.remove('revealed'));
 
@@ -691,7 +662,6 @@
                 updateUI();
             }
 
-            // Click to Reveal mechanism
             function handleNext() {
                 const currentSlideEl = slides[currentSlideIndex];
                 const unrevealed = currentSlideEl.querySelectorAll('.reveal-step:not(.revealed)');
@@ -729,13 +699,48 @@
             }
             updateUI(); 
 
-            // Nav Event Listeners
+            // Standard Navigation Triggers
             prevBtn.addEventListener('click', handlePrev);
             nextBtn.addEventListener('click', handleNext);
+            
+            // "Click Anywhere to Advance" vs "Click Left margin to go back" Setup
             navLeft.addEventListener('click', handlePrev);
             navRight.addEventListener('click', handleNext);
+            
             slideDropdown.addEventListener('change', (e) => showSlide(e.target.value));
 
+            let touchStartX = 0;
+            let touchStartY = 0;
+            
+            document.addEventListener('touchstart', (e) => {
+                if (currentTool !== null) return; // Don't track swipe if drawing
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            }, { passive: true });
+
+            document.addEventListener('touchend', (e) => {
+                if (currentTool !== null) return;
+                
+                let touchEndX = e.changedTouches[0].screenX;
+                let touchEndY = e.changedTouches[0].screenY;
+                
+                let diffX = touchStartX - touchEndX;
+                let diffY = touchStartY - touchEndY;
+                
+                // If it was primarily a horizontal swipe
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    // Requires a minimum distance of 50px to register as a swipe
+                    if (Math.abs(diffX) > 50) {
+                        if (diffX > 0) {
+                            handleNext(); // Swiped left => Go Next
+                        } else {
+                            handlePrev(); // Swiped right => Go Back
+                        }
+                    }
+                }
+            }, { passive: true });
+
+            // Keyboard navigation
             document.addEventListener('keydown', (e) => {
                 if(e.target.tagName.toLowerCase() === 'input') return;
                 if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
@@ -752,7 +757,6 @@
                 });
             }
 
-            /* --- Tool Logic --- */
             function setTool(tool) {
                 currentTool = tool;
                 canvas.classList.add('pointer-events-none');
@@ -761,6 +765,10 @@
                 markerIndicator.classList.add('hidden');
                 textIndicator.classList.add('hidden');
                 document.body.style.cursor = 'default';
+                
+                // Hide or show the navigation click areas based on tool activity
+                navRight.style.display = tool ? 'none' : 'block';
+                navLeft.style.display = tool ? 'none' : 'block';
 
                 if (tool !== null) {
                     canvas.classList.remove('pointer-events-none');
@@ -784,7 +792,7 @@
                 slideHistory[currentSlideIndex] = null;
             });
 
-            /* Draw */
+            /* Draw Tool Functions */
             function startDrawing(e) {
                 if (currentTool !== 'marker') return;
                 isDrawing = true;
@@ -825,7 +833,7 @@
             canvas.addEventListener('touchmove', (e) => { if(currentTool === 'marker') { e.preventDefault(); draw(e); } }, {passive: false});
             canvas.addEventListener('touchend', stopDrawing);
 
-            /* Text */
+            /* Text Tool Functions */
             canvas.addEventListener('click', (e) => {
                 if (currentTool !== 'text') return;
                 if (document.getElementById('temp-text-input')) return; 
