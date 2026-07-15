@@ -141,15 +141,6 @@
             animation: zoomFade 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; 
         }
 
-        /* Navigation Click Areas Setup */
-        .nav-area { position: absolute; top: 0; bottom: 4rem; z-index: 20; cursor: pointer; }
-        
-        /* Left 10% is for moving back */
-        .nav-area-left { left: 0; width: 10%; } 
-        
-        /* Remaining 90% is for clicking anywhere to move forward */
-        .nav-area-right { left: 10%; right: 0; width: 90%; }
-
         /* Component Styling */
         .step-badge {
             background-color: var(--trimble-blue);
@@ -201,10 +192,6 @@
         <canvas id="drawing-canvas" class="absolute top-0 left-0 w-full h-full pointer-events-none" style="z-index: 25;"></canvas>
         
         <img id="global-small-logo" src="GlobeR-Logo-Boxed-Blue10-RGB.png" onerror="this.onerror=null; this.src='https://placehold.co/48x48/0063a3/ffffff?text=Icon';" alt="Trimble Icon" class="absolute top-4 right-8 h-10 w-10 object-contain z-30 pointer-events-none hidden shadow-sm">
-
-        <!-- Clickable Areas that sit above the slides but below the drawing tools -->
-        <div class="nav-area nav-area-left" id="nav-left" title="Previous Slide"></div>
-        <div class="nav-area nav-area-right" id="nav-right" title="Next Slide"></div>
 
         <!-- TITLE SLIDE -->
         <section class="slide active" id="slide-0">
@@ -579,8 +566,6 @@
             const slideDropdown = document.getElementById('slide-dropdown');
             const progressBar = document.getElementById('progress-bar');
             
-            const navLeft = document.getElementById('nav-left');
-            const navRight = document.getElementById('nav-right');
             const fullscreenBtn = document.getElementById('fullscreen-btn');
 
             /* Canvas Annotation System */
@@ -703,9 +688,24 @@
             prevBtn.addEventListener('click', handlePrev);
             nextBtn.addEventListener('click', handleNext);
             
-            // "Click Anywhere to Advance" vs "Click Left margin to go back" Setup
-            navLeft.addEventListener('click', handlePrev);
-            navRight.addEventListener('click', handleNext);
+            // Global click handler for slide advancement (Replaces overlay divs)
+            document.getElementById('presentation-container').addEventListener('click', (e) => {
+                // Do not advance if we are drawing or adding text
+                if (currentTool !== null) return;
+                
+                // Do not advance if clicking the bottom control bar or any of its children
+                if (e.target.closest('.absolute.bottom-0')) return;
+
+                // Determine if click was in the left 10% (Go back) or anywhere else (Go next)
+                const clickX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+                const screenWidth = window.innerWidth;
+                
+                if (clickX > 0 && clickX < screenWidth * 0.1) {
+                    handlePrev();
+                } else if (clickX >= screenWidth * 0.1) {
+                    handleNext();
+                }
+            });
             
             slideDropdown.addEventListener('change', (e) => showSlide(e.target.value));
 
@@ -765,10 +765,6 @@
                 markerIndicator.classList.add('hidden');
                 textIndicator.classList.add('hidden');
                 document.body.style.cursor = 'default';
-                
-                // Hide or show the navigation click areas based on tool activity
-                navRight.style.display = tool ? 'none' : 'block';
-                navLeft.style.display = tool ? 'none' : 'block';
 
                 if (tool !== null) {
                     canvas.classList.remove('pointer-events-none');
