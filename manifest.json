@@ -1,0 +1,22 @@
+{
+"name": "Trimble SEA Service Dashboard",
+"short_name": "SEA KPIs",
+"description": "Quarterly Service KPI Report for Trimble SEA",
+"start_url": "./trimble_sea_kpi_slides.html",
+"display": "standalone",
+"background_color": "#ffffff",
+"theme_color": "#0063a3",
+"orientation": "landscape",
+"icons": [
+{
+"src": "GlobeR-Logo-Boxed-Blue10-RGB.png",
+"sizes": "192x192",
+"type": "image/png"
+},
+{
+"src": "GlobeR-Logo-Boxed-Blue10-RGB.png",
+"sizes": "512x512",
+"type": "image/png"
+}
+]
+}

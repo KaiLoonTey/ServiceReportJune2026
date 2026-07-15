@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trimble SEA Service Report</title>
+    
+    <!-- Prevent Search Engine Indexing (Unlisted) -->
+    <meta name="robots" content="noindex, nofollow">
+    
+    <!-- PWA & Mobile App Installation Tags -->
+    <meta name="theme-color" content="#0063a3">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SEA KPIs">
+    <link rel="apple-touch-icon" href="GlobeR-Logo-Boxed-Blue10-RGB.png">
+    
+    <!-- Embedded Web App Manifest -->
+    <link rel="manifest" href="manifest.json">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --trimble-blue: #0063a3;
+            --trimble-blue-dark: #003054;
+            --trimble-blue-mid: #004f83;
+            --trimble-blue-light: #368fc7;
+            --trimble-yellow: #fbad26;
+            --trimble-green: #349c44;
+            --trimble-red: #da212c;
+            --trimble-gray-dark: #252a2e;
+            --trimble-gray-mid: #464b52;
+            --trimble-gray-light: #90939f;
+            --brand-light: #ffffff;
+        }
+
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: var(--brand-light);
+            color: var(--trimble-gray-dark);
+            overflow: hidden; 
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        input { user-select: auto; }
+
+        /* Slide mechanics */
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out;
+            box-sizing: border-box;
+            background-color: var(--brand-light);
+            padding-bottom: 4rem; /* space for bottom bar */
+        }
+
+        .slide.active {
+            display: block;
+            opacity: 1;
+            z-index: 10;
+        }
+
+        /* Animations */
+        @keyframes fadeRight {
+            from { opacity: 0; transform: translateX(-40px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes fadeUpScale {
+            from { opacity: 0; transform: translateY(40px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .slide.active .animate-title { animation: fadeRight 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+        
+        /* Step-by-step Reveal Mechanics */
+        .reveal-step {
+            opacity: 0;
+            visibility: hidden;
+        }
+        .reveal-step.revealed {
+            visibility: visible;
+        }
+        
+        .slide.active .reveal-step.revealed.animate-fade-up { 
+            animation: fadeUpScale 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; 
+        }
+        
+        .slide.active .animate-fade-up-immediate { 
+            animation: fadeUpScale 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; 
+        }
+
+        /* Navigation overlay */
+        .nav-area {
+            position: absolute;
+            top: 0;
+            bottom: 4rem;
+            width: 8%;
+            z-index: 20;
+            cursor: pointer;
+        }
+        .nav-area:hover { background: rgba(0, 99, 163, 0.02); }
+        .nav-area-left { left: 0; }
+        .nav-area-right { right: 0; }
+
+        .step-badge {
+            background-color: var(--trimble-blue);
+            color: white;
+            font-weight: 700;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+            display: inline-block;
+        }
+
+        /* Card Styles */
+        .kpi-card {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid #f1f5f9;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        /* Bar chart animations */
+        @keyframes growUp {
+            from { height: 0; opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes growRight {
+            from { width: 0; opacity: 0; }
+            to { opacity: 1; }
+        }
+        .slide.active .reveal-step.revealed .grow-up { animation: growUp 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; transform-origin: bottom; }
+        .slide.active .reveal-step.revealed .grow-right { animation: growRight 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; transform-origin: left; }
+        .slide.active .grow-right-immediate { animation: growRight 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; transform-origin: left; }
+
+    </style>
+</head>
+<body class="antialiased selection:bg-[#0063a3] selection:text-white">
+
+    <main id="presentation-container" class="relative w-screen h-screen bg-[#ffffff]">
+        <canvas id="drawing-canvas" class="absolute top-0 left-0 w-full h-full pointer-events-none" style="z-index: 25;"></canvas>
+        
+        <!-- GLOBAL SMALL LOGO FOR CONTENT SLIDES (Top Right) -->
+        <!-- INSTRUCTIONS: To use your local image (e.g., the square blue icon), save it in the same folder and change src="GlobeR-Logo-Boxed-Blue10-RGB.png" -->
+        <img id="global-small-logo" src="GlobeR-Logo-Boxed-Blue10-RGB.png" onerror="this.onerror=null; this.src='https://placehold.co/48x48/0063a3/ffffff?text=Icon';" alt="Trimble Icon" class="absolute top-4 right-8 h-10 w-10 object-contain z-30 pointer-events-none hidden shadow-sm">
+
+        <div class="nav-area nav-area-left" id="nav-left" title="Previous Slide"></div>
+        <div class="nav-area nav-area-right" id="nav-right" title="Next Slide"></div>
+
+        <!-- NEW TITLE SLIDE -->
+        <section class="slide active" id="slide-0">
+            <!-- Full Background Image with Dark Gradient Overlay -->
+            <div class="absolute inset-0 z-0 bg-black">
+                <!-- INSTRUCTIONS: To use your local image, save it in the same folder and change src="coverpage.jpg" -->
+                <img src="coverpage.jpg" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1586528116311-ad8ed7c861e0?q=80&w=2070&auto=format&fit=crop';" alt="Cover Image" class="w-full h-full object-cover opacity-80">
+                <div class="absolute inset-0 bg-gradient-to-r from-[#000000] via-[#000000]/80 to-transparent"></div>
+            </div>
+
+            <div class="relative z-10 flex h-full w-full">
+                <div class="w-full h-full relative p-16 md:p-24 flex flex-col justify-center">
+                    <!-- FULL BANNER LOGO (Top Left) -->
+                    <!-- INSTRUCTIONS: To use your local image, save it in the same folder and change src="TrimbleR-Logo-Boxed-Blue10-RGB.png" -->
+                    <div class="absolute top-12 left-16 md:left-24">
+                        <img src="TrimbleR-Logo-Boxed-Blue10-RGB.png" onerror="this.onerror=null; this.src='https://placehold.co/220x65/0063a3/ffffff?text=Trimble';" alt="Trimble Banner Logo" class="h-16 object-contain">
+                    </div>
+
+                    <div class="animate-title mt-16 max-w-3xl">
+                        <h1 class="text-6xl md:text-7xl font-extrabold text-white mb-8 leading-tight tracking-tight">Trimble SEA<br>Service Dashboard</h1>
+                        <h2 class="text-3xl text-gray-200 font-normal mb-16">June 2026 Reporting Period</h2>
+                        
+                        <p class="text-lg text-[#fbad26] font-semibold mb-1">Q2 Review</p>
+                        <p class="text-lg text-gray-300">Presented By: Teykl, SEA Service Team</p>
+                    </div>
+
+                    <div class="absolute bottom-12 left-16 md:left-24 text-xs font-bold text-gray-400">
+                        © 2026 Trimble Inc. All Rights Reserved.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="slide px-10 md:px-20 pt-10" id="slide-1">
+            <div class="w-full mb-8 border-b-2 border-gray-200 pb-4 flex justify-between items-end">
+                <div>
+                    <div class="step-badge animate-title bg-[#0063a3]">1. Support Overview</div>
+                    <h2 class="text-4xl font-extrabold text-[#252a2e] animate-title tracking-tight">Trimble SEA Service Dashboard</h2>
+                </div>
+                <div class="text-right animate-title">
+                    <p class="text-xl font-bold text-[#0063a3]">June 2026</p>
+                    <p class="text-sm text-[#464b52] font-semibold uppercase tracking-wider">Reporting Period</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 w-full reveal-step animate-fade-up mb-8">
+                <div class="kpi-card border-l-4 border-[#0063a3]">
+                    <h3 class="text-[#464b52] text-xs font-bold uppercase tracking-wider mb-2">Total Support Cases</h3>
+                    <span class="text-5xl font-black text-[#0063a3]">1,201</span>
+                    <div class="mt-4"><span class="px-2 py-1 rounded text-xs font-bold bg-gray-100 text-[#252a2e]">+5.17% vs prev year</span></div>
+                </div>
+
+                <div class="kpi-card border-l-4 border-[#349C44]">
+                    <h3 class="text-[#464b52] text-xs font-bold uppercase tracking-wider mb-2">FRT < 2h (Target >80%)</h3>
+                    <span class="text-5xl font-black text-[#349C44]">81.77%</span>
+                    <div class="mt-4"><span class="px-2 py-1 rounded text-xs font-bold bg-[#eef8f0] text-[#349C44]">Target Met</span></div>
+                </div>
+
+                <div class="kpi-card border-l-4 border-[#349C44]">
+                    <h3 class="text-[#464b52] text-xs font-bold uppercase tracking-wider mb-2">Helpdesk NPS</h3>
+                    <span class="text-5xl font-black text-[#349C44]">86.8</span>
+                    <p class="text-xs text-[#90939f] mt-4 font-bold">Based on 91 Responses</p>
+                </div>
+                
+                <div class="kpi-card border-l-4 border-[#349C44]">
+                    <h3 class="text-[#464b52] text-xs font-bold uppercase tracking-wider mb-2">Customer Effort (CES)</h3>
+                    <span class="text-5xl font-black text-[#349C44]">6.8</span>
+                    <p class="text-xs text-[#90939f] mt-4 font-bold">Corporate Goal ≥ 5.6</p>
+                </div>
+            </div>
+
+            <div class="reveal-step animate-fade-up">
+                <h2 class="text-xl font-bold text-[#252a2e] mb-4 flex items-center">Executive Insights</h2>
+                <div class="flex gap-6 h-full">
+                    <div class="w-1/2 p-6 bg-[#fdf2f2] border-l-4 border-[#DA212C] rounded-r-sm shadow-sm">
+                        <h3 class="text-lg font-bold text-[#DA212C] mb-2 flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            Missed SLA Alert
+                        </h3>
+                        <p class="text-[#DA212C] text-lg">60 cases missed the SLA target during business hours.</p>
+                    </div>
+                    <div class="w-1/2 p-6 bg-white border border-gray-200 rounded-sm shadow-sm">
+                        <h3 class="text-lg font-bold text-[#0063a3] mb-2 flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                            Volume Trend
+                        </h3>
+                        <p class="text-[#464b52] text-lg">Overall case volume has reached 1,201 cases for the tracking period.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="slide px-10 md:px-20 pt-10" id="slide-2">
+            <div class="w-full mb-6">
+                <div class="step-badge animate-title bg-[#0063a3]">2. Support Trends</div>
+                <h2 class="text-3xl font-extrabold text-[#252a2e] animate-title">Performance & Volume Analysis</h2>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 w-full reveal-step animate-fade-up mb-6">
+                <div class="kpi-card border-l-4 border-[#fbad26] p-4">
+                    <h3 class="text-[#464b52] text-[10px] font-bold uppercase tracking-wider mb-1">Knowledge Reuse</h3>
+                    <span class="text-3xl font-black text-[#fbad26]">15.07%</span>
+                    <div class="mt-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-[#fff8eb] text-[#fbad26]">Target >30%</span></div>
+                </div>
+                <div class="kpi-card border-l-4 border-[#fbad26] p-4">
+                    <h3 class="text-[#464b52] text-[10px] font-bold uppercase tracking-wider mb-1">Resolution < 3d</h3>
+                    <span class="text-3xl font-black text-[#fbad26]">37.72%</span>
+                    <div class="mt-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-[#fff8eb] text-[#fbad26]">Target >80%</span></div>
+                </div>
+                <div class="kpi-card border-l-4 border-[#90939f] p-4">
+                    <h3 class="text-[#464b52] text-[10px] font-bold uppercase tracking-wider mb-1">Escalated Cases</h3>
+                    <span class="text-3xl font-black text-[#252a2e]">1.59%</span>
+                </div>
+                <div class="kpi-card border-l-4 border-[#DA212C] p-4">
+                    <h3 class="text-[#464b52] text-[10px] font-bold uppercase tracking-wider mb-1">Missed SLA</h3>
+                    <span class="text-3xl font-black text-[#DA212C]">60</span>
+                    <p class="text-[10px] text-[#DA212C] mt-2 font-bold">5.00% Miss Rate</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 reveal-step animate-fade-up h-[45%]">
+                <div class="kpi-card lg:col-span-2 h-full">
+                    <h2 class="text-lg font-bold text-[#252a2e] mb-4 border-b pb-2">Monthly Support Volume (2026)</h2>
+                    <div class="flex items-end justify-between h-full w-full px-4 pb-6 pt-4 gap-4">
+                        <div class="flex flex-col items-center w-full grow-up" style="height: 76%;"><div class="w-full bg-[#368FC7] h-full flex items-start justify-center pt-2"><span class="text-white font-bold text-sm">195</span></div><span class="text-[#464b52] text-sm font-bold mt-2">Jan</span></div>
+                        <div class="flex flex-col items-center w-full grow-up" style="height: 52%;"><div class="w-full bg-[#368FC7] h-full flex items-start justify-center pt-2"><span class="text-white font-bold text-sm">133</span></div><span class="text-[#464b52] text-sm font-bold mt-2">Feb</span></div>
+                        <div class="flex flex-col items-center w-full grow-up" style="height: 97%;"><div class="w-full bg-[#368FC7] h-full flex items-start justify-center pt-2"><span class="text-white font-bold text-sm">248</span></div><span class="text-[#464b52] text-sm font-bold mt-2">Mar</span></div>
+                        <div class="flex flex-col items-center w-full grow-up" style="height: 100%;"><div class="w-full bg-[#368FC7] h-full flex items-start justify-center pt-2"><span class="text-white font-bold text-sm">254</span></div><span class="text-[#464b52] text-sm font-bold mt-2">Apr</span></div>
+                        <div class="flex flex-col items-center w-full grow-up" style="height: 70%;"><div class="w-full bg-[#368FC7] h-full flex items-start justify-center pt-2"><span class="text-white font-bold text-sm">180</span></div><span class="text-[#464b52] text-sm font-bold mt-2">May</span></div>
+                        <div class="flex flex-col items-center w-full grow-up" style="height: 75%;"><div class="w-full bg-[#368FC7] h-full flex items-start justify-center pt-2"><span class="text-white font-bold text-sm">191</span></div><span class="text-[#464b52] text-sm font-bold mt-2">Jun</span></div>
+                    </div>
+                </div>
+                <div class="kpi-card lg:col-span-1 h-full">
+                    <h2 class="text-lg font-bold text-[#252a2e] mb-4 border-b pb-2">FRT Breakdown</h2>
+                    <div class="flex flex-col justify-center h-full space-y-6">
+                        <div class="flex items-center text-sm"><div class="w-1/3 text-[#464b52] text-right pr-4 font-bold uppercase text-xs"> < 2 Hrs</div><div class="w-2/3 flex items-center"><div class="h-6 bg-[#003054] grow-right" style="width: 100%;"></div><span class="ml-3 font-bold text-[#252a2e]">982</span></div></div>
+                        <div class="flex items-center text-sm"><div class="w-1/3 text-[#464b52] text-right pr-4 font-bold uppercase text-xs"> < 1 Day</div><div class="w-2/3 flex items-center"><div class="h-6 bg-[#004F83] grow-right" style="width: 15.6%;"></div><span class="ml-3 font-bold text-[#252a2e]">154</span></div></div>
+                        <div class="flex items-center text-sm"><div class="w-1/3 text-[#464b52] text-right pr-4 font-bold uppercase text-xs">> 1 Day</div><div class="w-2/3 flex items-center"><div class="h-6 bg-[#368FC7] grow-right" style="width: 4%;"></div><span class="ml-3 font-bold text-[#252a2e]">39</span></div></div>
+                        <div class="flex items-center text-sm"><div class="w-1/3 text-[#464b52] text-right pr-4 font-bold uppercase text-xs">Unknown</div><div class="w-2/3 flex items-center"><div class="h-6 bg-[#90939F] grow-right" style="width: 2.6%;"></div><span class="ml-3 font-bold text-[#252a2e]">26</span></div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="slide px-10 md:px-20 pt-10" id="slide-3">
+            <div class="w-full mb-6">
+                <div class="step-badge animate-title bg-[#0063a3]">3. Onboarding</div>
+                <h2 class="text-3xl font-extrabold text-[#252a2e] animate-title">Customer Adoption Metrics</h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full reveal-step animate-fade-up mb-8">
+                <div class="kpi-card border-l-4 border-[#003054]">
+                    <h3 class="text-[#464b52] text-sm font-bold uppercase tracking-wider mb-2">Total Active Onboardings</h3>
+                    <span class="text-6xl font-black text-[#003054]">72</span>
+                </div>
+                <div class="kpi-card border-l-4 border-[#349C44]">
+                    <h3 class="text-[#464b52] text-sm font-bold uppercase tracking-wider mb-2">Live This Month</h3>
+                    <span class="text-6xl font-black text-[#349C44]">36</span>
+                </div>
+                <div class="kpi-card border-l-4 border-[#fbad26]">
+                    <h3 class="text-[#464b52] text-sm font-bold uppercase tracking-wider mb-2">Avg Days to Live</h3>
+                    <span class="text-6xl font-black text-[#252a2e]">42 <span class="text-2xl text-[#90939f]">Days</span></span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 reveal-step animate-fade-up h-[40%]">
+                <div class="kpi-card h-full">
+                    <h2 class="text-lg font-bold text-[#252a2e] mb-4 border-b pb-2">Onboarding by Country</h2>
+                    <div class="flex items-end justify-around h-full w-full px-4 pb-6 pt-4 gap-2">
+                        <div class="flex flex-col items-center w-1/4 grow-up" style="height: 100%;"><div class="w-full bg-[#003054] h-full flex items-start justify-center pt-2"><span class="text-white font-bold">47</span></div><span class="text-[#464b52] text-sm font-bold mt-2">Malaysia</span></div>
+                        <div class="flex flex-col items-center w-1/4 grow-up" style="height: 42%;"><div class="w-full bg-[#368FC7] h-full flex items-start justify-center pt-2"><span class="text-white font-bold">20</span></div><span class="text-[#464b52] text-sm font-bold mt-2">Singapore</span></div>
+                        <div class="flex flex-col items-center w-1/4 grow-up" style="height: 4%;"><div class="w-full bg-[#90939F] h-full flex items-start justify-center pt-0 -mt-2"><span class="text-[#252a2e] font-bold text-center block -mt-6">2</span></div><span class="text-[#464b52] text-sm font-bold mt-2">Brunei</span></div>
+                        <div class="flex flex-col items-center w-1/4 grow-up" style="height: 4%;"><div class="w-full bg-[#90939F] h-full flex items-start justify-center pt-0 -mt-2"><span class="text-[#252a2e] font-bold text-center block -mt-6">2</span></div><span class="text-[#464b52] text-sm font-bold mt-2">Viet Nam</span></div>
+                    </div>
+                </div>
+                <div class="kpi-card h-full">
+                    <h2 class="text-lg font-bold text-[#252a2e] mb-4 border-b pb-2">Pipeline by Stage</h2>
+                    <div class="flex flex-col justify-center h-full space-y-6 px-4">
+                        <div class="flex items-center text-sm"><div class="w-1/4 text-[#464b52] text-right pr-4 font-bold uppercase">Live</div><div class="w-3/4 flex items-center"><div class="h-8 bg-[#003054] grow-right" style="width: 100%;"></div><span class="ml-3 font-bold text-[#252a2e] text-lg">36</span></div></div>
+                        <div class="flex items-center text-sm"><div class="w-1/4 text-[#464b52] text-right pr-4 font-bold uppercase">New</div><div class="w-3/4 flex items-center"><div class="h-8 bg-[#004F83] grow-right" style="width: 50%;"></div><span class="ml-3 font-bold text-[#252a2e] text-lg">18</span></div></div>
+                        <div class="flex items-center text-sm"><div class="w-1/4 text-[#464b52] text-right pr-4 font-bold uppercase">Pre-Train</div><div class="w-3/4 flex items-center"><div class="h-8 bg-[#368FC7] grow-right" style="width: 44.4%;"></div><span class="ml-3 font-bold text-[#252a2e] text-lg">16</span></div></div>
+                        <div class="flex items-center text-sm"><div class="w-1/4 text-[#464b52] text-right pr-4 font-bold uppercase">Welcome</div><div class="w-3/4 flex items-center"><div class="h-8 bg-[#90939F] grow-right" style="width: 5.5%;"></div><span class="ml-3 font-bold text-[#252a2e] text-lg">2</span></div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="slide px-10 md:px-20 pt-10" id="slide-4">
+            <div class="w-full mb-4">
+                <div class="step-badge animate-title bg-[#0063a3]">4. Training & Clinics</div>
+                <h2 class="text-3xl font-extrabold text-[#252a2e] animate-title">Training Delivery</h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 reveal-step animate-fade-up mb-6">
+                <div class="kpi-card border-l-4 border-[#0063a3] flex flex-row justify-between items-center p-6">
+                    <div>
+                        <p class="text-[#464b52] text-sm font-bold uppercase tracking-wider">Order Value (USD)</p>
+                        <p class="text-5xl font-black text-[#0063a3] mt-2">$26.56k</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-bold text-[#90939f] uppercase">Orders</p>
+                        <p class="text-3xl font-black text-[#252a2e]">6</p>
+                    </div>
+                </div>
+                <div class="kpi-card border-l-4 border-[#349C44] flex flex-row justify-between items-center p-6">
+                    <div>
+                        <p class="text-[#464b52] text-sm font-bold uppercase tracking-wider">Trainings Delivered</p>
+                        <p class="text-5xl font-black text-[#349C44] mt-2">7</p>
+                    </div>
+                    <div class="flex gap-8 text-right">
+                        <div>
+                            <p class="text-sm font-bold text-[#90939f] uppercase">Pax</p>
+                            <p class="text-3xl font-black text-[#252a2e]">31</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-[#90939f] uppercase">Comps</p>
+                            <p class="text-3xl font-black text-[#252a2e]">7</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 reveal-step animate-fade-up h-[45%]">
+                <div class="kpi-card h-full">
+                    <h2 class="text-lg font-bold text-[#252a2e] mb-4 border-b pb-2">Products Ordered (Qty)</h2>
+                    <div class="flex flex-col justify-center h-full space-y-5 px-2">
+                        <div class="flex items-center text-sm"><div class="w-1/3 text-[#464b52] text-right pr-4 font-bold">Fund. 1-Day</div><div class="w-2/3 flex items-center"><div class="h-8 bg-[#368FC7] grow-right" style="width: 100%;"></div><span class="ml-3 font-bold text-[#252a2e]">10</span></div></div>
+                        <div class="flex items-center text-sm"><div class="w-1/3 text-[#464b52] text-right pr-4 font-bold">Eng 1-Day</div><div class="w-2/3 flex items-center"><div class="h-8 bg-[#368FC7] grow-right" style="width: 80%;"></div><span class="ml-3 font-bold text-[#252a2e]">8</span></div></div>
+                        <div class="flex items-center text-sm"><div class="w-1/3 text-[#464b52] text-right pr-4 font-bold">Custom Onsite</div><div class="w-2/3 flex items-center"><div class="h-8 bg-[#368FC7] grow-right" style="width: 60%;"></div><span class="ml-3 font-bold text-[#252a2e]">6</span></div></div>
+                        <div class="flex items-center text-sm"><div class="w-1/3 text-[#464b52] text-right pr-4 font-bold">PowerFab Onsite</div><div class="w-2/3 flex items-center"><div class="h-8 bg-[#368FC7] grow-right" style="width: 50%;"></div><span class="ml-3 font-bold text-[#252a2e]">5</span></div></div>
+                        <div class="flex items-center text-sm"><div class="w-1/3 text-[#464b52] text-right pr-4 font-bold">Interm. Virtual</div><div class="w-2/3 flex items-center"><div class="h-8 bg-[#368FC7] grow-right" style="width: 10%;"></div><span class="ml-3 font-bold text-[#252a2e]">1</span></div></div>
+                    </div>
+                </div>
+                
+                <div class="kpi-card h-full flex flex-col">
+                    <h2 class="text-lg font-bold text-[#252a2e] mb-6 border-b pb-2">Clinic Sessions</h2>
+                    <div class="flex justify-between items-center h-full px-8 pb-4">
+                        <div class="flex flex-col gap-8 w-1/2">
+                            <div>
+                                <p class="text-sm font-bold text-[#90939F] uppercase tracking-wider mb-1">Total Clinics</p>
+                                <p class="text-5xl font-black text-[#0063a3]">12</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-[#90939F] uppercase tracking-wider mb-1">Clinic Hours</p>
+                                <p class="text-5xl font-black text-[#0063a3]">12</p>
+                            </div>
+                        </div>
+                        
+                        <div class="w-1/2 flex flex-col items-center gap-6">
+                            <!-- Pure CSS Pie Chart -->
+                            <div class="w-40 h-40 rounded-full" style="background: conic-gradient(#003054 0% 75%, #368fc7 75% 100%);"></div>
+                            
+                            <div class="flex gap-6 w-full justify-center text-sm">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-4 h-4 bg-[#003054]"></div>
+                                    <span class="font-bold text-[#252a2e]">TS (75%)</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <div class="w-4 h-4 bg-[#368fc7]"></div>
+                                    <span class="font-bold text-[#252a2e]">TSD (25%)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="slide px-10 md:px-20 pt-10 flex flex-col pb-24" id="slide-5">
+            <div class="w-full mb-6 flex justify-between items-end">
+                <div>
+                    <div class="step-badge animate-title bg-[#0063a3]">5. Team Workload</div>
+                    <h2 class="text-3xl font-extrabold text-[#252a2e] animate-title">Capacity & Output</h2>
+                </div>
+                
+                <!-- Removed reveal-step so these show immediately alongside the title -->
+                <div class="flex gap-4 animate-title" style="animation-delay: 0.2s;">
+                    <div class="px-6 py-3 rounded-sm border border-[#e2e8f0] text-center bg-white shadow-sm">
+                        <p class="text-xs font-bold text-[#464b52] uppercase tracking-wider mb-1">Unique SEA Accounts</p>
+                        <p class="text-3xl font-black text-[#0063a3]">306</p>
+                    </div>
+                    <div class="px-6 py-3 rounded-sm border border-[#e2e8f0] text-center bg-white shadow-sm">
+                        <p class="text-xs font-bold text-[#464b52] uppercase tracking-wider mb-1">No-Reply Emails</p>
+                        <p class="text-3xl font-black text-[#fbad26]">5</p>
+                    </div>
+                    <div class="px-6 py-3 rounded-sm border border-[#e2e8f0] text-center bg-white shadow-sm">
+                        <p class="text-xs font-bold text-[#464b52] uppercase tracking-wider mb-1">Avg Interactions</p>
+                        <p class="text-3xl font-black text-[#252a2e]">2.0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Removed the click-to-reveal class entirely so the bar chart loads immediately! -->
+            <div class="kpi-card w-full flex-grow animate-fade-up-immediate mb-4 overflow-hidden">
+                <h2 class="text-xl font-bold text-[#252a2e] mb-4 border-b pb-2">Support Cases by Team Member</h2>
+                
+                <!-- Removed fixed height & scrollbar; added flex-grow and justify-around for perfect auto-spacing -->
+                <div class="flex flex-col h-full w-full justify-around pb-2">
+                    <div class="flex items-center text-sm"><div class="w-1/4 text-[#464b52] text-right pr-4 font-bold uppercase">Yee Cheng Liew</div><div class="w-3/4 flex items-center"><div class="h-6 bg-[#368FC7] grow-right-immediate" style="width: 100%;"></div><span class="ml-3 font-bold text-[#252a2e] text-lg">393</span></div></div>
+                    <div class="flex items-center text-sm"><div class="w-1/4 text-[#464b52] text-right pr-4 font-bold uppercase">Tawan Boonithee</div><div class="w-3/4 flex items-center"><div class="h-6 bg-[#368FC7] grow-right-immediate" style="width: 51.6%;"></div><span class="ml-3 font-bold text-[#252a2e] text-lg">203</span></div></div>
+                    <div class="flex items-center text-sm"><div class="w-1/4 text-[#464b52] text-right pr-4 font-bold uppercase">Kai Loon Tey</div><div class="w-3/4 flex items-center"><div class="h-6 bg-[#368FC7] grow-right-immediate" style="width: 47%;"></div><span class="ml-3 font-bold text-[#252a2e] text-lg">185</span></div></div>
+                    <div class="flex items-center text-sm"><div class="w-1/4 text-[#464b52] text-right pr-4 font-bold uppercase">Yudhi Dwi Putra</div><div class="w-3/4 flex items-center"><div class="h-6 bg-[#368FC7] grow-right-immediate" style="width: 37.4%;"></div><span class="ml-3 font-bold text-[#252a2e] text-lg">147</span></div></div>
+                    <div class="flex items-center text-sm"><div class="w-1/4 text-[#464b52] text-right pr-4 font-bold uppercase">Wichai Khankwa</div><div class="w-3/4 flex items-center"><div class="h-6 bg-[#368FC7] grow-right-immediate" style="width: 28.2%;"></div><span class="ml-3 font-bold text-[#252a2e] text-lg">111</span></div></div>
+                    <div class="flex items-center text-sm"><div class="w-1/4 text-[#464b52] text-right pr-4 font-bold uppercase">Taufik Musa</div><div class="w-3/4 flex items-center"><div class="h-6 bg-[#368FC7] grow-right-immediate" style="width: 22.1%;"></div><span class="ml-3 font-bold text-[#252a2e] text-lg">87</span></div></div>
+                    <div class="flex items-center text-sm"><div class="w-1/4 text-[#464b52] text-right pr-4 font-bold uppercase">Norman Enriquez Quila</div><div class="w-3/4 flex items-center"><div class="h-6 bg-[#368FC7] grow-right-immediate" style="width: 15.7%;"></div><span class="ml-3 font-bold text-[#252a2e] text-lg">62</span></div></div>
+                    <div class="flex items-center text-sm"><div class="w-1/4 text-[#464b52] text-right pr-4 font-bold uppercase">Steven Wong</div><div class="w-3/4 flex items-center"><div class="h-6 bg-[#368FC7] grow-right-immediate" style="width: 1.5%;"></div><span class="ml-3 font-bold text-[#252a2e] text-lg">6</span></div></div>
+                    <div class="flex items-center text-sm"><div class="w-1/4 text-[#464b52] text-right pr-4 font-bold uppercase">Chester Tan</div><div class="w-3/4 flex items-center"><div class="h-6 bg-[#368FC7] grow-right-immediate" style="width: 1%;"></div><span class="ml-3 font-bold text-[#252a2e] text-lg">4</span></div></div>
+                    <div class="flex items-center text-sm"><div class="w-1/4 text-[#464b52] text-right pr-4 font-bold uppercase">Teten Iskandar</div><div class="w-3/4 flex items-center"><div class="h-6 bg-[#368FC7] grow-right-immediate" style="width: 0.8%;"></div><span class="ml-3 font-bold text-[#252a2e] text-lg">3</span></div></div>
+                </div>
+            </div>
+        </section>
+
+        <div class="absolute bottom-0 left-0 w-full z-40 bg-white border-t border-gray-200 shadow-[0_-4px_15px_rgba(0,0,0,0.05)]">
+            <div class="w-full bg-gray-200 h-1.5">
+                <div id="progress-bar" class="bg-[#0063a3] h-1.5 w-[20%] transition-all duration-300"></div>
+            </div>
+            
+            <div class="flex justify-between items-center px-6 h-14">
+                <div class="flex items-center space-x-2 w-1/3">
+                    <button id="prev-btn" class="p-2 rounded hover:bg-gray-100 text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed z-30">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <button id="next-btn" class="p-2 rounded hover:bg-gray-100 text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed z-30">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                    
+                    <div class="ml-2 relative z-30">
+                        <select id="slide-dropdown" class="appearance-none bg-transparent border border-gray-300 text-gray-700 py-1.5 pl-3 pr-8 rounded text-sm font-semibold focus:outline-none focus:border-[#0063a3] cursor-pointer hover:bg-gray-50 transition-colors">
+                            <option value="0">0. Title Slide</option>
+                            <option value="1">1. Support Overview</option>
+                            <option value="2">2. Support Trends</option>
+                            <option value="3">3. Onboarding</option>
+                            <option value="4">4. Training & Clinics</option>
+                            <option value="5">5. Team Workload</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="w-1/3 flex justify-center items-center text-sm font-bold text-[#90939f] uppercase tracking-widest">
+                    Service Dashboard
+                </div>
+
+                <div class="w-1/3 flex justify-end items-center space-x-2">
+                    <div class="h-6 w-px bg-gray-300 mx-1"></div>
+
+                    <!-- Tools -->
+                    <button id="text-btn" title="Add Text (Click to stamp)" class="p-2 rounded text-gray-600 hover:bg-gray-100 transition-colors relative border border-transparent z-30">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7V4h16v3M9 20h6M12 4v16"></path></svg>
+                        <span id="text-indicator" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-[#fbad26] rounded-full border border-white"></span>
+                    </button>
+
+                    <button id="marker-btn" title="Draw" class="p-2 rounded text-gray-600 hover:bg-gray-100 transition-colors relative border border-transparent z-30">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                        <span id="marker-indicator" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-[#fbad26] rounded-full border border-white"></span>
+                    </button>
+                    
+                    <button id="clear-draw-btn" title="Clear Canvas (Current Slide)" class="p-2 rounded text-red-500 hover:bg-red-50 transition-colors z-30">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+
+                    <div class="h-6 w-px bg-gray-300 mx-1"></div>
+
+                    <!-- Fullscreen -->
+                    <button id="fullscreen-btn" title="Fullscreen" class="p-2 rounded text-gray-600 hover:bg-gray-100 transition-colors z-30">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l-5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const slides = document.querySelectorAll('.slide');
+            const totalSlides = slides.length;
+            let currentSlideIndex = 0;
+
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const slideDropdown = document.getElementById('slide-dropdown');
+            const progressBar = document.getElementById('progress-bar');
+            
+            const navLeft = document.getElementById('nav-left');
+            const navRight = document.getElementById('nav-right');
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+
+            /* Canvas Annotation System */
+            const canvas = document.getElementById('drawing-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            const markerBtn = document.getElementById('marker-btn');
+            const textBtn = document.getElementById('text-btn');
+            const clearBtn = document.getElementById('clear-draw-btn');
+            const markerIndicator = document.getElementById('marker-indicator');
+            const textIndicator = document.getElementById('text-indicator');
+            
+            let currentTool = null; // null, 'marker', 'text'
+            let isDrawing = false;
+            
+            const slideHistory = {}; 
+
+            function resizeCanvas() {
+                let tempSave = null;
+                if(canvas.width > 0 && canvas.height > 0) tempSave = canvas.toDataURL();
+                
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                
+                if(tempSave) {
+                    const img = new Image();
+                    img.src = tempSave;
+                    img.onload = () => ctx.drawImage(img, 0, 0);
+                } else {
+                    restoreCanvas(currentSlideIndex);
+                }
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            function saveCanvas() { 
+                slideHistory[currentSlideIndex] = canvas.toDataURL(); 
+            }
+
+            function restoreCanvas(index) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (slideHistory[index]) {
+                    const img = new Image();
+                    img.src = slideHistory[index];
+                    img.onload = () => ctx.drawImage(img, 0, 0);
+                }
+            }
+
+            // Force reflow for animations to re-trigger
+            function restartAnimations(container) {
+                const animatedEls = container.querySelectorAll('.animate-title, .animate-fade-up, .grow-up, .grow-right, .animate-fade-up-immediate, .grow-right-immediate');
+                animatedEls.forEach(el => {
+                    el.style.animation = 'none';
+                    el.offsetHeight; /* trigger reflow */
+                    el.style.animation = null; 
+                });
+            }
+
+            function showSlide(index) {
+                if (index < 0 || index >= totalSlides || index === currentSlideIndex) return;
+                
+                saveCanvas(); 
+                
+                slides[currentSlideIndex].classList.remove('active');
+                currentSlideIndex = parseInt(index);
+                slides[currentSlideIndex].classList.add('active');
+                
+                // Toggle Small Logo visibility (Hide on Title Slide)
+                const smallLogo = document.getElementById('global-small-logo');
+                if (smallLogo) {
+                    if (currentSlideIndex === 0) {
+                        smallLogo.classList.add('hidden');
+                    } else {
+                        smallLogo.classList.remove('hidden');
+                    }
+                }
+
+                // Hide all reveal steps on the new slide so they wait for a click
+                const steps = slides[currentSlideIndex].querySelectorAll('.reveal-step');
+                steps.forEach(step => step.classList.remove('revealed'));
+
+                restartAnimations(slides[currentSlideIndex]);
+                restoreCanvas(currentSlideIndex); 
+                
+                updateUI();
+            }
+
+            // Replaces basic nextSlide to check for hidden steps first
+            function handleNext() {
+                const currentSlideEl = slides[currentSlideIndex];
+                const unrevealed = currentSlideEl.querySelectorAll('.reveal-step:not(.revealed)');
+                
+                if (unrevealed.length > 0) {
+                    unrevealed[0].classList.add('revealed');
+                    restartAnimations(unrevealed[0]);
+                } else if (currentSlideIndex < totalSlides - 1) {
+                    showSlide(currentSlideIndex + 1);
+                }
+            }
+            
+            // Replaces basic prevSlide to hide the last step, or go back
+            function handlePrev() {
+                const currentSlideEl = slides[currentSlideIndex];
+                const revealed = currentSlideEl.querySelectorAll('.reveal-step.revealed');
+                
+                if (revealed.length > 0) {
+                    revealed[revealed.length - 1].classList.remove('revealed');
+                } else if (currentSlideIndex > 0) {
+                    showSlide(currentSlideIndex - 1);
+                    // Automatically reveal all steps on previous slide so it doesn't look blank
+                    setTimeout(() => {
+                        const steps = slides[currentSlideIndex].querySelectorAll('.reveal-step');
+                        steps.forEach(step => step.classList.add('revealed'));
+                    }, 50);
+                }
+            }
+
+            function updateUI() {
+                slideDropdown.value = currentSlideIndex;
+                const progressPercentage = ((currentSlideIndex + 1) / totalSlides) * 100;
+                progressBar.style.width = `${progressPercentage}%`;
+                
+                prevBtn.disabled = currentSlideIndex === 0;
+                nextBtn.disabled = currentSlideIndex === totalSlides - 1;
+            }
+            updateUI(); 
+
+            // Navigation
+            prevBtn.addEventListener('click', handlePrev);
+            nextBtn.addEventListener('click', handleNext);
+            navLeft.addEventListener('click', handlePrev);
+            navRight.addEventListener('click', handleNext);
+            slideDropdown.addEventListener('change', (e) => showSlide(e.target.value));
+
+            document.addEventListener('keydown', (e) => {
+                if(e.target.tagName.toLowerCase() === 'input') return;
+                if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+                    e.preventDefault(); handleNext();
+                } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                    e.preventDefault(); handlePrev();
+                }
+            });
+
+            // Disabled scroll wheel navigation to prevent accidental skipping
+            // Users must now use keyboard arrows, spacebar, or the UI buttons.
+            let lastScrollTime = 0;
+            document.addEventListener('wheel', (e) => {
+                // Scroll navigation removed. 
+            }, { passive: true });
+
+            if(fullscreenBtn) {
+                fullscreenBtn.addEventListener('click', () => {
+                    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(e => console.warn(e));
+                    else document.exitFullscreen();
+                });
+            }
+
+            /* --- Tool Logic --- */
+            function setTool(tool) {
+                currentTool = tool;
+                canvas.classList.add('pointer-events-none');
+                markerBtn.classList.remove('bg-gray-100', 'border-gray-300');
+                textBtn.classList.remove('bg-gray-100', 'border-gray-300');
+                markerIndicator.classList.add('hidden');
+                textIndicator.classList.add('hidden');
+                document.body.style.cursor = 'default';
+
+                if (tool !== null) {
+                    canvas.classList.remove('pointer-events-none');
+                    if (tool === 'marker') {
+                        markerBtn.classList.add('bg-gray-100', 'border-gray-300');
+                        markerIndicator.classList.remove('hidden');
+                        document.body.style.cursor = 'crosshair';
+                    } else if (tool === 'text') {
+                        textBtn.classList.add('bg-gray-100', 'border-gray-300');
+                        textIndicator.classList.remove('hidden');
+                        document.body.style.cursor = 'text';
+                    }
+                }
+            }
+
+            markerBtn.addEventListener('click', () => setTool(currentTool === 'marker' ? null : 'marker'));
+            textBtn.addEventListener('click', () => setTool(currentTool === 'text' ? null : 'text'));
+
+            clearBtn.addEventListener('click', () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                slideHistory[currentSlideIndex] = null;
+            });
+
+            /* Draw */
+            function startDrawing(e) {
+                if (currentTool !== 'marker') return;
+                isDrawing = true;
+                ctx.strokeStyle = '#fbad26'; // Trimble Yellow for drawing
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                draw(e);
+            }
+
+            function stopDrawing() {
+                if (!isDrawing) return;
+                isDrawing = false;
+                ctx.beginPath();
+                saveCanvas();
+            }
+
+            function draw(e) {
+                if (!isDrawing || currentTool !== 'marker') return;
+                let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+                let clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+                
+                const rect = canvas.getBoundingClientRect();
+                clientX -= rect.left;
+                clientY -= rect.top;
+
+                ctx.lineTo(clientX, clientY);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(clientX, clientY);
+            }
+
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            canvas.addEventListener('touchstart', (e) => { if(currentTool === 'marker') { e.preventDefault(); startDrawing(e); } }, {passive: false});
+            canvas.addEventListener('touchmove', (e) => { if(currentTool === 'marker') { e.preventDefault(); draw(e); } }, {passive: false});
+            canvas.addEventListener('touchend', stopDrawing);
+
+            /* Text */
+            canvas.addEventListener('click', (e) => {
+                if (currentTool !== 'text') return;
+                if (document.getElementById('temp-text-input')) return; 
+
+                let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+                let clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.id = 'temp-text-input';
+                input.placeholder = "Type & Enter...";
+                input.style.position = 'absolute';
+                input.style.left = `${clientX}px`;
+                input.style.top = `${clientY}px`;
+                input.style.transform = 'translateY(-50%)';
+                input.style.color = '#fbad26'; // Trimble yellow
+                input.style.fontSize = '24px';
+                input.style.fontFamily = 'Open Sans, sans-serif';
+                input.style.fontWeight = 'bold';
+                input.style.background = 'rgba(255, 255, 255, 0.95)';
+                input.style.border = '2px dashed #fbad26';
+                input.style.padding = '4px 8px';
+                input.style.borderRadius = '4px';
+                input.style.outline = 'none';
+                input.style.zIndex = '1000';
+                input.style.minWidth = '220px';
+                input.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
+
+                document.body.appendChild(input);
+                input.focus();
+
+                function stampText() {
+                    const text = input.value.trim();
+                    if (text !== '') {
+                        ctx.font = 'bold 24px "Open Sans", sans-serif';
+                        ctx.fillStyle = '#fbad26'; 
+                        ctx.textBaseline = 'middle';
+                        
+                        const rect = canvas.getBoundingClientRect();
+                        const drawX = clientX - rect.left;
+                        const drawY = clientY - rect.top;
+
+                        ctx.fillText(text, drawX + 8, drawY);
+                        saveCanvas(); 
+                    }
+                    if(document.body.contains(input)) input.remove();
+                }
+
+                input.addEventListener('blur', stampText);
+                input.addEventListener('keydown', (evt) => {
+                    if (evt.key === 'Enter') stampText();
+                    if (evt.key === 'Escape') input.remove();
+                });
+            });
+        });
+    </script>
+</body>
+</html>
